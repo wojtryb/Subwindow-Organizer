@@ -1,13 +1,22 @@
-from krita import *
+from krita import Krita
 from copy import copy
 import sip
+
+from PyQt5.QtWidgets import QMdiArea
+from PyQt5.QtCore import QPoint, QSize
 
 from .mdi_area_filter import mdiAreaFilter
 from .subwindow_filter_background import SubwindowFilterBackground
 from .subwindow_filter_floater import SubwindowFilterFloater
 from .subwindow_filter_all import SubwindowFilterAll
 
-from .config import *
+from .config import (
+    REFPOSITION,
+    SNAPDISTANCE,
+    MINIMALCOLUMNWIDTH,
+    DEFAULTFLOATERSIZE,
+    DEFAULTCOLUMNRATIO,
+    SOFTPROOFING)
 
 
 class Resizer:
@@ -21,7 +30,7 @@ class Resizer:
 
         self.qWin = qwin
 
-        self.mdiArea = self.qWin.centralWidget().findChild(QMdiArea)
+        self.mdiArea: QMdiArea = self.qWin.centralWidget().findChild(QMdiArea)
         # 0 on start - amount of opened subwindows
         self.views = len(self.mdiArea.subWindowList())
         self.refPosition = REFPOSITION
@@ -91,9 +100,9 @@ class Resizer:
                     resizer.columnWidth = resizer.mdiArea.width() - resizer.activeSubwin.width()
 
         current = self.mdiArea.activeSubWindow()
-        if current != None:  # weird situation with maximized background window
+        if current is not None:  # weird situation with maximized background window
             # two split windows
-            if self.refNeeded and self.activeSubwin != None and self.otherSubwin != None and (not current.isMaximized()):
+            if self.refNeeded and self.activeSubwin is not None and self.otherSubwin is not None and (not current.isMaximized()):
                 if checkSizeChange == True:
                     checkSizeChanges(self)
 
@@ -103,16 +112,16 @@ class Resizer:
                 self.activeSubwin.move(self.activePos)
                 self.activeSubwin.resize(self.activeSize)
 
-            if (not self.refNeeded) and self.activeSubwin != None:  # one window on whole workspace
+            if (not self.refNeeded) and self.activeSubwin is not None:  # one window on whole workspace
                 self.activeSubwin.move(0, 0)
                 self.activeSubwin.resize(self.mdiArea.size())
 
     # counting the size for newly created view
     def resize_floater(self, floater, pyFloater=None):
-        if DEFAULTFLOATERSIZE != None:  # none, means that no resizing will be done
-            if pyFloater == None:  # getting python object of the same qt subwindow, if not working, needs to be taken other way and passed as argument
+        if DEFAULTFLOATERSIZE is not None:  # none, means that no resizing will be done
+            if pyFloater is None:  # getting python object of the same qt subwindow, if not working, needs to be taken other way and passed as argument
                 self.mdiArea.setActiveSubWindow(floater)
-                pyFloater = Application.activeWindow().activeView().document()
+                pyFloater = Krita.instance().activeWindow().activeView().document()
 
             if type(DEFAULTFLOATERSIZE) == int:  # area is given in pixels
                 ratio = pyFloater.width()/pyFloater.height()
@@ -163,12 +172,12 @@ class Resizer:
 
     # switch into one window mode
     def user_mode_one_window(self):
-        if self.otherSubwin != None:
+        if self.otherSubwin is not None:
             # bugfix: helps if user toggled overridden minimize button on main windows
             self.otherSubwin.showNormal()
         self.refNeeded = False
 
-        if self.otherSubwin != None:
+        if self.otherSubwin is not None:
             # no longer one of the two main windows
             self.otherSubwin.removeEventFilter(self.subWindowFilterBackground)
             self.otherSubwin.installEventFilter(self.subWindowFilterFloater)
@@ -208,14 +217,14 @@ class Resizer:
             menu.actions()[5].setVisible(True)
 
         # enable default organizing actions
-        if (action := Application.action('windows_cascade')) != None:
+        if (action := Krita.instance().action('windows_cascade')) is not None:
             action.setVisible(True)
-        if (action := Application.action('windows_tile')) != None:
+        if (action := Krita.instance().action('windows_tile')) is not None:
             action.setVisible(True)
 
         # disable plugin actions
-        Application.action("openOverview").setVisible(False)
-        Application.action("pickSubwindow").setVisible(False)
+        Krita.instance().action("openOverview").setVisible(False)
+        Krita.instance().action("pickSubwindow").setVisible(False)
 
         self.activeSubwin = None
         self.otherSubwin = None
@@ -230,18 +239,18 @@ class Resizer:
     def user_turn_on(self):
         self.mdiAreaFilter = mdiAreaFilter(self)
 
-        if (action := Application.action('windows_cascade')) != None:
+        if (action := Krita.instance().action('windows_cascade')) is not None:
             action.setVisible(False)
-        if (action := Application.action('windows_tile')) != None:
+        if (action := Krita.instance().action('windows_tile')) is not None:
             action.setVisible(False)
 
         self.views = len(self.mdiArea.subWindowList())
 
         if self.views >= 1:
             self.get_active_subwindow()
-            Application.action("openOverview").setVisible(True)
+            Krita.instance().action("openOverview").setVisible(True)
         if self.views >= 2:
-            Application.action("pickSubwindow").setVisible(True)
+            Krita.instance().action("pickSubwindow").setVisible(True)
 
         for subwindow in self.mdiArea.subWindowList():
             subwindow.installEventFilter(self.subWindowFilterAll)
@@ -273,10 +282,10 @@ class Resizer:
     # opens grayscale overwiev
     def user_open_overview(self):
         self.mdiArea.setActiveSubWindow(self.activeSubwin)
-        doc = Application.activeDocument()
-        Application.activeWindow().addView(doc)
+        doc = Krita.instance().activeDocument()
+        Krita.instance().activeWindow().addView(doc)
         if SOFTPROOFING:
-            Application.action("softProof").trigger()
+            Krita.instance().action("softProof").trigger()
         overview = self.mdiArea.subWindowList()[-1]
         overview.move(self.mdiArea.width() - overview.width(),
                       self.mdiArea.height() - overview.height())
@@ -317,13 +326,13 @@ class Resizer:
 
         # those help if user toggled overridden minimize button on main windows
         self.activeSubwin.showNormal()
-        if self.otherSubwin != None:
+        if self.otherSubwin is not None:
             self.otherSubwin.showNormal()
 
         current = self.mdiArea.activeSubWindow()
         if self.refNeeded:
             # switch two main windows
-            if (current == self.activeSubwin or current == self.otherSubwin) and self.otherSubwin != None:
+            if (current == self.activeSubwin or current == self.otherSubwin) and self.otherSubwin is not None:
                 self.switch_background_windows()
 
             # set floater as ref

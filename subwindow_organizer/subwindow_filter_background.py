@@ -1,28 +1,28 @@
-from krita import *
 from copy import copy
 
-from .config import *
+from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtWidgets import QMdiSubWindow
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .resizer import Resizer
 
-# event catcher for windows on back
-
 
 class SubwindowFilterBackground(QMdiSubWindow):
+    # event catcher for windows on back
+
     def __init__(self, resizer: "Resizer", parent=None):
         super().__init__(parent)
         self.resizer = resizer
         self._reset_flags()
 
     def eventFilter(self, obj, e):
-        if e.type() == QEvent.Resize:
+        if e.type() == QEvent.Type.Resize:
             self.resizer.move_subwindows()  # update the second window
 
-        elif e.type() == QEvent.WindowStateChange:  # title bar buttons override
+        elif e.type() == QEvent.Type.WindowStateChange:  # title bar buttons override
             oldMinimized = False
-            if int(e.oldState()) & int(Qt.WindowMinimized) != 0:
+            if int(e.oldState()) & int(Qt.WindowState.WindowMinimized) != 0:
                 oldMinimized = True
 
             if obj.isMinimized():  # minimize button toggled - discard all changes
@@ -38,7 +38,7 @@ class SubwindowFilterBackground(QMdiSubWindow):
             if self.resizer.views == 1:  # to make sure
                 obj.showMaximized()
 
-        elif e.type() == QEvent.MouseButtonPress:
+        elif e.type() == QEvent.Type.MouseButtonPress:
             cursorLocal = e.pos()  # cursor in relation to window
             if -25 < cursorLocal.x() < 25 or obj.width()-25 < cursorLocal.x() < obj.width()+25 \
                     or -3 < cursorLocal.y() < 3 or obj.height()-25 < cursorLocal.y() < obj.height()+25:  # it is a resize, not move
@@ -46,12 +46,12 @@ class SubwindowFilterBackground(QMdiSubWindow):
             else:
                 self.resizeBool = False
 
-        elif e.type() == QEvent.MouseButtonRelease:
+        elif e.type() == QEvent.Type.MouseButtonRelease:
             self.cursor = self.resizer.mdiArea.mapFromGlobal(
                 e.globalPos())  # self.cursor in relation to mdiarea
             self.lastCursorReleased = copy(self.cursor)
 
-        elif e.type() == QEvent.Move:
+        elif e.type() == QEvent.Type.Move:
             if (not self.resizeBool) and not self.switchingInProgress and self.cursor != None:
                 self.switchingInProgress = True
 
@@ -74,14 +74,14 @@ class SubwindowFilterBackground(QMdiSubWindow):
             return True
         return False
 
-    # these flags make sure that the move event was caused by mouse input, not script
     def _reset_flags(self):
+        # these flags make sure that the move event was caused by mouse input, not script
         self.resizeBool = False
         self.cursor = None
         self.switchingInProgress = False
 
-    # drag and drop action for swapping a background window with floater
     def _swap_floaters(self, obj):
+        # drag and drop action for swapping a background window with floater
         for subwindow in self.resizer.mdiArea.subWindowList():  # swapping with floaters
             if self._is_under_mouse(subwindow, self.cursor) and subwindow != obj:
                 if subwindow != self.resizer.activeSubwin and subwindow != self.resizer.otherSubwin and not subwindow.isMinimized():  # other floater, swap with it
@@ -114,8 +114,8 @@ class SubwindowFilterBackground(QMdiSubWindow):
                     return True
         return False
 
-    # drag and drop action for swapping two background windows
     def _swap_backgrounders(self, obj):
+        # drag and drop action for swapping two background windows
         for subwindow in self.resizer.mdiArea.subWindowList():  # swapping backgrounders
             if self._is_under_mouse(subwindow, self.cursor) and subwindow != obj:
                 if subwindow == self.resizer.activeSubwin or subwindow == self.resizer.otherSubwin:  # other background window - swap
@@ -124,8 +124,8 @@ class SubwindowFilterBackground(QMdiSubWindow):
                     return True
         return False
 
-    # drag and drop action for leaving split screen mode
     def _enter_one_window_mode(self, obj):
+        # drag and drop action for leaving split screen mode
         if self.resizer.refNeeded and obj in [self.resizer.activeSubwin, self.resizer.otherSubwin] \
                 and 200 < self.cursor.y() < self.resizer.mdiArea.height() - 10 \
                 and 5 < self.cursor.x() < self.resizer.mdiArea.width() - 5:  # in mdiArea

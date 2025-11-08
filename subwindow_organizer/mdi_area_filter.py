@@ -1,25 +1,28 @@
-from krita import *
+from krita import Krita
 import sip
 
-from .config import *
+from .config import SPLITBYDEFAULT, DEFAULTCOLUMNRATIO
+
+from PyQt5.QtCore import QEvent
+from PyQt5.QtWidgets import QMdiArea
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .resizer import Resizer
 
-# event catcher for the workspace - changes in size, and subwindows added and removed
-
 
 class mdiAreaFilter(QMdiArea):
+    # event catcher for the workspace - changes in size, and subwindows added and removed
+
     def __init__(self, resizer: "Resizer", parent=None):
         super().__init__(parent)
         self.resizer = resizer
         self.sizeBefore = [resizer.mdiArea.width(), resizer.mdiArea.height()]
 
-    def eventFilter(self, obj, e):
+    def eventFilter(self, obj, e: QEvent):
         if not sip.isdeleted(self.resizer.mdiArea):
-            if e.type() == QEvent.Resize:
-                if Application.readSetting("", "mdi_viewmode", "1") == "0":
+            if e.type() == QEvent.Type.Resize:
+                if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
                     self.resizer.move_subwindows()
                     self.moveFloatersOnAreaChange(
                         self.resizer)  # move floaters
@@ -29,13 +32,13 @@ class mdiAreaFilter(QMdiArea):
                         self.resizer.mdiArea.width(), self.resizer.mdiArea.height()]
 
             # there are many more events, as subwindows aren't the only children, so the change have to be found as change in list size
-            if e.type() == QEvent.ChildAdded:
+            if e.type() == QEvent.Type.ChildAdded:
                 if self.resizer.views < len(self.resizer.mdiArea.subWindowList()):
                     self.viewOpenedEvent(self.resizer)
                     self.resizer.views = len(
                         self.resizer.mdiArea.subWindowList())
 
-            if e.type() == QEvent.ChildRemoved:
+            if e.type() == QEvent.Type.ChildRemoved:
                 if self.resizer.views > len(self.resizer.mdiArea.subWindowList()):
                     self.viewClosedEvent(self.resizer)
                     self.resizer.views = len(
@@ -43,10 +46,8 @@ class mdiAreaFilter(QMdiArea):
 
         return False
 
-    # -----------FUNCTIONS----------#
-    # each time when subwindow is closed
-
     def viewClosedEvent(self, resizer: "Resizer"):
+        # each time when subwindow is closed
         def checkIfDeleted(obj):
             if obj in resizer.mdiArea.subWindowList():
                 return obj
@@ -77,21 +78,20 @@ class mdiAreaFilter(QMdiArea):
 
         if resizer.views == 1:
             resizer.activeSubwin.showMaximized()  # one view is always maximized
-            Application.action("pickSubwindow").setVisible(False)
+            Krita.instance().action("pickSubwindow").setVisible(False)
 
         if resizer.views == 0:
-            Application.action("openOverview").setVisible(False)
+            Krita.instance().action("openOverview").setVisible(False)
 
         resizer.move_subwindows()  # update changes
 
-    # each time when subwindow is opened
     def viewOpenedEvent(self, resizer: "Resizer"):
+        # each time when subwindow is opened
 
-        Application.action('windows_cascade').setVisible(False)
-        Application.action('windows_tile').setVisible(False)
+        Krita.instance().action('windows_cascade').setVisible(False)
+        Krita.instance().action('windows_tile').setVisible(False)
 
         resizer.views = len(resizer.mdiArea.subWindowList())
-        current = resizer.mdiArea.activeSubWindow()
 
         # event catcher for every window, never removed
         newSubwindow = resizer.mdiArea.subWindowList()[-1]
@@ -103,10 +103,10 @@ class mdiAreaFilter(QMdiArea):
 
         if resizer.views == 1:
             resizer.get_active_subwindow()
-            Application.action("openOverview").setVisible(True)
+            Krita.instance().action("openOverview").setVisible(True)
 
         if resizer.views == 2:
-            Application.action("pickSubwindow").setVisible(True)
+            Krita.instance().action("pickSubwindow").setVisible(True)
 
         maximizedList = [sub.isMaximized()
                          for sub in resizer.mdiArea.subWindowList()]
@@ -125,7 +125,7 @@ class mdiAreaFilter(QMdiArea):
         if (resizer.views >= 3 and resizer.refNeeded) or (resizer.views >= 2 and (not resizer.refNeeded)):  # open as floating window
             newSubwindow.installEventFilter(resizer.subWindowFilterFloater)
             resizer.toggle_always_on_top(newSubwindow, True)
-            pyNewSubwindow = Application.views()[-1].document()
+            pyNewSubwindow = Krita.instance().views()[-1].document()
             self.resizer.resize_floater(newSubwindow, pyNewSubwindow)
 
         resizer.move_subwindows()

@@ -1,85 +1,82 @@
-from krita import *
+from krita import Extension, Krita
 
 from .resizer import Resizer
 
 
 class SubwindowOrganizer(Extension):
-    # organizerToggleChecked = False
-    isToggled = False
-    # splitScreenChecked = False #for toggle on setup
-    kritaWindowsMode = False  # true if subwindows are on
-    # ===============================#
 
     def __init__(self, parent):
         super(SubwindowOrganizer, self).__init__(parent)
-        self.inProgress = False
+        self._is_toggled = False
+        self._is_subwindow_on = False  # true if subwindows are on
+        self._resizer: Resizer
 
-    # switching between subwindows - user action
     def pick_subwindow(self):
-        if not self.extension.subWindowFilterAll.isMaximized:
-            self.extension.user_toggle_subwindow()
+        # switching between subwindows - user action
+        if not self._resizer.subWindowFilterAll.isMaximized:
+            self._resizer.user_toggle_subwindow()
 
-    # opens grayscale overview
     def open_overview(self):
-        self.extension.user_open_overview()
+        # opens grayscale overview
+        self._resizer.user_open_overview()
 
-    # toggles the whole plugin off and on
     def organizer_toggle(self, toggled):
-        Application.writeSetting("SubwindowOrganizer",
-                                 "organizerToggled", str(toggled).lower())
-        self.isToggled = toggled
-        if self.kritaWindowsMode and self.isToggled:
+        # toggles the whole plugin off and on
+        Krita.instance().writeSetting("SubwindowOrganizer",
+                                      "organizerToggled", str(toggled).lower())
+        self._is_toggled = toggled
+        if self._is_subwindow_on and self._is_toggled:
             self.pickSubwindowAction.setVisible(True)
             self.openOverviewAction.setVisible(True)
-            self.extension.user_turn_on()
+            self._resizer.user_turn_on()
         else:
             self.pickSubwindowAction.setVisible(False)
             self.openOverviewAction.setVisible(False)
-            self.extension.user_turn_off()
+            self._resizer.user_turn_off()
 
-    # reading values saved in krita settings and creating a notifier for settings changed event
     def setup(self):
-        if Application.readSetting("SubwindowOrganizer", "organizerToggled", "true") == "true":
-            self.isToggled = True
-        if Application.readSetting("", "mdi_viewmode", "1") == "0":
-            self.kritaWindowsMode = True
+        # reading values saved in krita settings and creating a notifier for settings changed event
+        if Krita.instance().readSetting("SubwindowOrganizer", "organizerToggled", "true") == "true":
+            self._is_toggled = True
+        if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
+            self._is_subwindow_on = True
 
-        self.settingsNotifier = Application.notifier()
+        self.settingsNotifier = Krita.instance().notifier()
         self.settingsNotifier.setActive(True)
         self.settingsNotifier.configurationChanged.connect(
             self.on_settings_changed)
 
-    # happens when document mode (subwindow and tabs) is changed in settings by the user
     def on_settings_changed(self):
-        if Application.readSetting("", "mdi_viewmode", "1") == "0":
+        # happens when document mode (subwindow and tabs) is changed in settings by the user
+        if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
             newMode = True
         else:
             newMode = False
 
-        if self.kritaWindowsMode ^ newMode:  # mode was changed in krita settings
-            self.kritaWindowsMode = newMode
-            if self.kritaWindowsMode:  # changed from tabs to subwindows
+        if self._is_subwindow_on ^ newMode:  # mode was changed in krita settings
+            self._is_subwindow_on = newMode
+            if self._is_subwindow_on:  # changed from tabs to subwindows
                 # addon now can be activated and deactivated
                 self.organizerToggleAction.setVisible(True)
-                if self.isToggled:  # addon is on, so we can activate it
-                    self.extension.user_turn_on()
+                if self._is_toggled:  # addon is on, so we can activate it
+                    self._resizer.user_turn_on()
             else:  # mode changed from subwindows to tab
                 self.organizerToggleAction.setVisible(False)
-                if self.isToggled:  # addon was on
-                    self.extension.user_turn_off()
+                if self._is_toggled:  # addon was on
+                    self._resizer.user_turn_off()
 
-    # creates actions displayed in the view menu
     def createActions(self, window):
+        # creates actions displayed in the view menu
         qwin = window.qwindow()
-        toggleAtStart = self.isToggled and self.kritaWindowsMode
-        self.extension = Resizer(qwin, toggleAtStart)
+        toggleAtStart = self._is_toggled and self._is_subwindow_on
+        self._resizer = Resizer(qwin, toggleAtStart)
 
         self.organizerToggleAction = window.createAction(
             "organizerToggle", "Toggle organizer", "view")
         self.organizerToggleAction.setCheckable(True)
-        self.organizerToggleAction.setChecked(self.isToggled)
+        self.organizerToggleAction.setChecked(self._is_toggled)
         self.organizerToggleAction.toggled.connect(self.organizer_toggle)
-        self.organizerToggleAction.setVisible(self.kritaWindowsMode)
+        self.organizerToggleAction.setVisible(self._is_subwindow_on)
 
         self.pickSubwindowAction = window.createAction(
             "pickSubwindow", "Pick subwindow", "view")
