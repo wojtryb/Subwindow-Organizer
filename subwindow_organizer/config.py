@@ -17,7 +17,7 @@ SNAPDISTANCE = 30  # snapping floaters to edge
 SPLITMODERANGE = [0.3, 0.6]
 
 # when True, every time a second window is open, it will appear in a split mode
-SPLITBYDEFAULT = False
+SPLITBYDEFAULT = True
 # side on which this window will appear (can be changed by manually placing window on other side)
 REFPOSITION = "left"
 

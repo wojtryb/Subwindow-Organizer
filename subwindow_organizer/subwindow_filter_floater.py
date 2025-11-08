@@ -1,10 +1,14 @@
 from krita import *
 from .config import *
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .resizer import Resizer
+
 
 # event catcher for floating windows
-class subWindowFilterFloater(QMdiSubWindow):
-    def __init__(self, resizer, parent=None):
+class SubwindowFilterFloater(QMdiSubWindow):
+    def __init__(self, resizer: "Resizer", parent=None):
         super().__init__(parent)
         self.resizer = resizer
         self.resizeBool = False
@@ -44,7 +48,7 @@ class subWindowFilterFloater(QMdiSubWindow):
                     h = self.resizer.mdiArea.height()
                     if SPLITMODERANGE[0] * h < self.cursor.y() < SPLITMODERANGE[1] * h:
                         self.switchingInProgress = True
-                        self.resizer.userModeSplit()
+                        self.resizer.user_mode_split()
                         self.switchingInProgress = False
                         self.cursor = None
                         return True
@@ -55,6 +59,6 @@ class subWindowFilterFloater(QMdiSubWindow):
                     return True
 
                 # snap to border when floater moves
-                self.resizer.snapToBorder(obj)
+                self.resizer.snap_to_border(obj)
 
         return False

@@ -1,6 +1,6 @@
 from krita import *
 
-from .resizer import resizer
+from .resizer import Resizer
 
 
 class SubwindowOrganizer(Extension):
@@ -15,27 +15,27 @@ class SubwindowOrganizer(Extension):
         self.inProgress = False
 
     # switching between subwindows - user action
-    def pickSubwindow(self):
+    def pick_subwindow(self):
         if not self.extension.subWindowFilterAll.isMaximized:
-            self.extension.userToggleSubwindow()
+            self.extension.user_toggle_subwindow()
 
     # opens grayscale overview
-    def openOverview(self):
-        self.extension.userOpenOverview()
+    def open_overview(self):
+        self.extension.user_open_overview()
 
     # toggles the whole plugin off and on
-    def organizerToggle(self, toggled):
+    def organizer_toggle(self, toggled):
         Application.writeSetting("SubwindowOrganizer",
                                  "organizerToggled", str(toggled).lower())
         self.isToggled = toggled
         if self.kritaWindowsMode and self.isToggled:
             self.pickSubwindowAction.setVisible(True)
             self.openOverviewAction.setVisible(True)
-            self.extension.userTurnOn()
+            self.extension.user_turn_on()
         else:
             self.pickSubwindowAction.setVisible(False)
             self.openOverviewAction.setVisible(False)
-            self.extension.userTurnOff()
+            self.extension.user_turn_off()
 
     # reading values saved in krita settings and creating a notifier for settings changed event
     def setup(self):
@@ -47,10 +47,10 @@ class SubwindowOrganizer(Extension):
         self.settingsNotifier = Application.notifier()
         self.settingsNotifier.setActive(True)
         self.settingsNotifier.configurationChanged.connect(
-            self.settingsChangedEvent)
+            self.on_settings_changed)
 
     # happens when document mode (subwindow and tabs) is changed in settings by the user
-    def settingsChangedEvent(self):
+    def on_settings_changed(self):
         if Application.readSetting("", "mdi_viewmode", "1") == "0":
             newMode = True
         else:
@@ -62,33 +62,33 @@ class SubwindowOrganizer(Extension):
                 # addon now can be activated and deactivated
                 self.organizerToggleAction.setVisible(True)
                 if self.isToggled:  # addon is on, so we can activate it
-                    self.extension.userTurnOn()
+                    self.extension.user_turn_on()
             else:  # mode changed from subwindows to tab
                 self.organizerToggleAction.setVisible(False)
                 if self.isToggled:  # addon was on
-                    self.extension.userTurnOff()
+                    self.extension.user_turn_off()
 
     # creates actions displayed in the view menu
     def createActions(self, window):
         qwin = window.qwindow()
         toggleAtStart = self.isToggled and self.kritaWindowsMode
-        self.extension = resizer(qwin, toggleAtStart)
+        self.extension = Resizer(qwin, toggleAtStart)
 
         self.organizerToggleAction = window.createAction(
             "organizerToggle", "Toggle organizer", "view")
         self.organizerToggleAction.setCheckable(True)
         self.organizerToggleAction.setChecked(self.isToggled)
-        self.organizerToggleAction.toggled.connect(self.organizerToggle)
+        self.organizerToggleAction.toggled.connect(self.organizer_toggle)
         self.organizerToggleAction.setVisible(self.kritaWindowsMode)
 
         self.pickSubwindowAction = window.createAction(
             "pickSubwindow", "Pick subwindow", "view")
-        self.pickSubwindowAction.triggered.connect(self.pickSubwindow)
+        self.pickSubwindowAction.triggered.connect(self.pick_subwindow)
         self.pickSubwindowAction.setVisible(False)
 
         self.openOverviewAction = window.createAction(
             "openOverview", "Open canvas overview", "view")
-        self.openOverviewAction.triggered.connect(self.openOverview)
+        self.openOverviewAction.triggered.connect(self.open_overview)
         self.openOverviewAction.setVisible(False)
 
 

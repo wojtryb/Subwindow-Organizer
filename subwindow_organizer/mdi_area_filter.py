@@ -3,11 +3,15 @@ import sip
 
 from .config import *
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .resizer import Resizer
+
 # event catcher for the workspace - changes in size, and subwindows added and removed
 
 
 class mdiAreaFilter(QMdiArea):
-    def __init__(self, resizer, parent=None):
+    def __init__(self, resizer: "Resizer", parent=None):
         super().__init__(parent)
         self.resizer = resizer
         self.sizeBefore = [resizer.mdiArea.width(), resizer.mdiArea.height()]
@@ -16,7 +20,7 @@ class mdiAreaFilter(QMdiArea):
         if not sip.isdeleted(self.resizer.mdiArea):
             if e.type() == QEvent.Resize:
                 if Application.readSetting("", "mdi_viewmode", "1") == "0":
-                    self.resizer.moveSubwindows()
+                    self.resizer.move_subwindows()
                     self.moveFloatersOnAreaChange(
                         self.resizer)  # move floaters
                     self.resizeFloatersOnAreaChange()
@@ -42,7 +46,7 @@ class mdiAreaFilter(QMdiArea):
     # -----------FUNCTIONS----------#
     # each time when subwindow is closed
 
-    def viewClosedEvent(self, resizer):
+    def viewClosedEvent(self, resizer: "Resizer"):
         def checkIfDeleted(obj):
             if obj in resizer.mdiArea.subWindowList():
                 return obj
@@ -61,10 +65,10 @@ class mdiAreaFilter(QMdiArea):
 
         if resizer.otherSubwin == None:  # other was closed, or was transformed into active
             if resizer.refNeeded:  # split mode
-                resizer.userModeOneWindow()
+                resizer.user_mode_one_window()
 
         if resizer.activeSubwin == None:  # at first it was one window mode, active was closed, and nothing took its place
-            resizer.getActiveSubwin()
+            resizer.get_active_subwindow()
             # closing everything at once, can cause it
             if resizer.activeSubwin != None and resizer.activeSubwin.isMinimized():
                 # workaround - minimized windows have problems with getting normal, so I maximize them first
@@ -78,10 +82,10 @@ class mdiAreaFilter(QMdiArea):
         if resizer.views == 0:
             Application.action("openOverview").setVisible(False)
 
-        resizer.moveSubwindows()  # update changes
+        resizer.move_subwindows()  # update changes
 
     # each time when subwindow is opened
-    def viewOpenedEvent(self, resizer):
+    def viewOpenedEvent(self, resizer: "Resizer"):
 
         Application.action('windows_cascade').setVisible(False)
         Application.action('windows_tile').setVisible(False)
@@ -98,7 +102,7 @@ class mdiAreaFilter(QMdiArea):
         menu.actions()[5].setVisible(False)
 
         if resizer.views == 1:
-            resizer.getActiveSubwin()
+            resizer.get_active_subwindow()
             Application.action("openOverview").setVisible(True)
 
         if resizer.views == 2:
@@ -112,22 +116,22 @@ class mdiAreaFilter(QMdiArea):
             )[maximizedList.index(True)].showNormal()
 
         if resizer.views == 2 and SPLITBYDEFAULT:  # open new in split screen
-            self.resizer.userModeSplit()
-            resizer.getOtherSubwin()
+            self.resizer.user_mode_split()
+            resizer.get_other_subwindow()
             # default width for ref subwindow
             resizer.otherSubwin.resize(
                 int(DEFAULTCOLUMNRATIO*resizer.mdiArea.width()), resizer.mdiArea.height())
 
         if (resizer.views >= 3 and resizer.refNeeded) or (resizer.views >= 2 and (not resizer.refNeeded)):  # open as floating window
             newSubwindow.installEventFilter(resizer.subWindowFilterFloater)
-            resizer.toggleAlwaysOnTop(newSubwindow, True)
+            resizer.toggle_always_on_top(newSubwindow, True)
             pyNewSubwindow = Application.views()[-1].document()
-            self.resizer.resizeFloater(newSubwindow, pyNewSubwindow)
+            self.resizer.resize_floater(newSubwindow, pyNewSubwindow)
 
-        resizer.moveSubwindows()
+        resizer.move_subwindows()
 
     # keep snapping to border when screen got bigger
-    def moveFloatersOnAreaChange(self, resizer):
+    def moveFloatersOnAreaChange(self, resizer: "Resizer"):
 
         for subwindow in resizer.mdiArea.subWindowList():
             if subwindow != resizer.activeSubwin and subwindow != resizer.otherSubwin:
@@ -142,7 +146,7 @@ class mdiAreaFilter(QMdiArea):
                     y += resizer.mdiArea.height() - self.sizeBefore[1]
                 subwindow.move(x, y)
 
-                resizer.snapToBorder(subwindow)
+                resizer.snap_to_border(subwindow)
 
     # when krita window gets very small, floaters shouldn't be bigger than it
     def resizeFloatersOnAreaChange(self):
