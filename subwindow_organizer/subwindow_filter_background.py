@@ -136,7 +136,8 @@ class SubwindowFilterBackground(QMdiSubWindow):
                 self.resizer.otherSubwin = temp
 
             self.resizer.user_mode_one_window()
-            obj.move(self.lastCursorReleased.x() - 0.5 *
-                     obj.width(), self.lastCursorReleased.y() - 10)
+            obj.move(
+                round(self.lastCursorReleased.x() - 0.5 * obj.width()),
+                round(self.lastCursorReleased.y() - 10))
             return True
         return False

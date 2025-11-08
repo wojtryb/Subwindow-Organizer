@@ -30,8 +30,8 @@ class SubwindowFilterFloater(QMdiSubWindow):
 
             if obj.isMinimized() and e.y() < -5:  # deminimize on dragging minimized window
                 obj.showNormal()
-                obj.move(self.cursor.x() - 0.5*obj.width(),
-                         self.cursor.y() - 10)  # move to cursor position
+                obj.move(round(self.cursor.x() - 0.5*obj.width()),
+                         round(self.cursor.y() - 10))  # move to cursor position
 
         elif e.type() == QEvent.Move:
             # prevent freeze on user changing krita windows mode
