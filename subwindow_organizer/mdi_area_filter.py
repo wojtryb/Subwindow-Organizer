@@ -1,160 +1,52 @@
-from krita import Krita
 import sip
-
-from .config import SPLITBYDEFAULT, DEFAULTCOLUMNRATIO
+from typing import Protocol
 
 from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QMdiArea
+from PyQt5.QtWidgets import QMdiArea, QMdiSubWindow
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .resizer import Resizer
+# NOTE: QMdiArea has Tabbed/Subwindow mode enums in it
+# TODO: resize event should be handled with similar but separate class?
 
 
-class mdiAreaFilter(QMdiArea):
-    # event catcher for the workspace - changes in size, and subwindows added and removed
+class MdiAreaFilter(QMdiArea):
 
-    def __init__(self, resizer: "Resizer", parent=None):
-        super().__init__(parent)
-        self.resizer = resizer
-        self.sizeBefore = [resizer.mdiArea.width(), resizer.mdiArea.height()]
+    class ToDo(Protocol):
+        def on_resize(self): ...
+        def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
+        def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
+
+    class BlankToDo(ToDo):
+        def on_resize(self): ...
+        def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
+        def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
+
+    def __init__(self, mdiArea: QMdiArea, to_do: ToDo = BlankToDo()):
+        super().__init__()
+        self._mdiArea = mdiArea
+        self._handled_views: set[QMdiSubWindow] = set()
+        self._to_do = to_do
 
     def eventFilter(self, _, e: QEvent):
-        if sip.isdeleted(self.resizer.mdiArea):
+        if sip.isdeleted(self._mdiArea):
             return False
 
+        # Krita window is resized
         if e.type() == QEvent.Type.Resize:
-            if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
-                self.resizer.move_subwindows()
-                self.moveFloatersOnAreaChange(
-                    self.resizer)  # move floaters
-                self.resizeFloatersOnAreaChange()
-                # changes done, can actualize width and height of workspace
-                self.sizeBefore = [
-                    self.resizer.mdiArea.width(), self.resizer.mdiArea.height()]
+            self._to_do.on_resize()
 
-        # there are many more events, as subwindows aren't the only children, so the change have to be found as change in list size
-        if e.type() == QEvent.Type.ChildAdded:
-            if self.resizer.views < len(self.resizer.mdiArea.subWindowList()):
-                self.viewOpenedEvent(self.resizer)
-                self.resizer.views = len(
-                    self.resizer.mdiArea.subWindowList())
+        # Event that can be (among many other) change in subwindows amount
+        if e.type() in (QEvent.Type.ChildAdded, QEvent.Type.ChildRemoved):
+            current_views = self._mdiArea.subWindowList()
+            if len(self._handled_views) == len(current_views):
+                return False
 
-        if e.type() == QEvent.Type.ChildRemoved:
-            if self.resizer.views > len(self.resizer.mdiArea.subWindowList()):
-                self.viewClosedEvent(self.resizer)
-                self.resizer.views = len(
-                    self.resizer.mdiArea.subWindowList())
+            current_views = set(current_views)
 
-        return False
-
-    def viewClosedEvent(self, resizer: "Resizer"):
-        # each time when subwindow is closed
-        def checkIfDeleted(obj):
-            if obj in resizer.mdiArea.subWindowList():
-                return obj
+            if difference := current_views - self._handled_views:
+                self._to_do.on_subwindow_open(difference.pop())
             else:
-                return None
+                difference = self._handled_views - current_views
+                self._to_do.on_subwindow_close(difference.pop())
 
-        resizer.views = len(resizer.mdiArea.subWindowList())
-
-        resizer.activeSubwin = checkIfDeleted(resizer.activeSubwin)
-        resizer.otherSubwin = checkIfDeleted(resizer.otherSubwin)
-
-        # active was closed, other is the new active (only in split mode, in one window, there is no other)
-        if resizer.activeSubwin is None:
-            resizer.activeSubwin = resizer.otherSubwin
-            resizer.otherSubwin = None
-
-        if resizer.otherSubwin is None:  # other was closed, or was transformed into active
-            if resizer.refNeeded:  # split mode
-                resizer.user_mode_one_window()
-
-        if resizer.activeSubwin is None:  # at first it was one window mode, active was closed, and nothing took its place
-            resizer.get_active_subwindow()
-            # closing everything at once, can cause it
-            if resizer.activeSubwin is not None and resizer.activeSubwin.isMinimized():
-                # workaround - minimized windows have problems with getting normal, so I maximize them first
-                resizer.activeSubwin.showMaximized()
-                resizer.activeSubwin.showNormal()
-
-        if resizer.views == 1:
-            resizer.activeSubwin.showMaximized()  # one view is always maximized
-            Krita.instance().action("pickSubwindow").setVisible(False)
-
-        if resizer.views == 0:
-            Krita.instance().action("openOverview").setVisible(False)
-
-        resizer.move_subwindows()  # update changes
-
-    def viewOpenedEvent(self, resizer: "Resizer"):
-        # each time when subwindow is opened
-
-        Krita.instance().action('windows_cascade').setVisible(False)
-        Krita.instance().action('windows_tile').setVisible(False)
-
-        resizer.views = len(resizer.mdiArea.subWindowList())
-
-        # event catcher for every window, never removed
-        newSubwindow = resizer.mdiArea.subWindowList()[-1]
-        newSubwindow.installEventFilter(resizer.subWindowFilterAll)
-
-        # when the addon is enabled, user cant toggle "always on top" action
-        menu = newSubwindow.children()[0]
-        menu.actions()[5].setVisible(False)
-
-        if resizer.views == 1:
-            resizer.get_active_subwindow()
-            Krita.instance().action("openOverview").setVisible(True)
-
-        if resizer.views == 2:
-            Krita.instance().action("pickSubwindow").setVisible(True)
-
-        maximizedList = [sub.isMaximized()
-                         for sub in resizer.mdiArea.subWindowList()]
-        # if something was maximized, demaximize it
-        if resizer.views >= 2 and any(maximizedList):
-            resizer.mdiArea.subWindowList(
-            )[maximizedList.index(True)].showNormal()
-
-        if resizer.views == 2 and SPLITBYDEFAULT:  # open new in split screen
-            self.resizer.user_mode_split()
-            resizer.get_other_subwindow()
-            # default width for ref subwindow
-            resizer.otherSubwin.resize(
-                int(DEFAULTCOLUMNRATIO*resizer.mdiArea.width()), resizer.mdiArea.height())
-
-        if (resizer.views >= 3 and resizer.refNeeded) or (resizer.views >= 2 and (not resizer.refNeeded)):  # open as floating window
-            newSubwindow.installEventFilter(resizer.subWindowFilterFloater)
-            resizer.toggle_always_on_top(newSubwindow, True)
-            pyNewSubwindow = Krita.instance().views()[-1].document()
-            self.resizer.resize_floater(newSubwindow, pyNewSubwindow)
-
-        resizer.move_subwindows()
-
-    def moveFloatersOnAreaChange(self, resizer: "Resizer"):
-        # keep snapping to border when screen got bigger
-        for subwindow in resizer.mdiArea.subWindowList():
-            if subwindow != resizer.activeSubwin and subwindow != resizer.otherSubwin:
-                x = subwindow.pos().x()
-                y = subwindow.pos().y()
-
-                # closer to the right border of canvas than left one
-                if x > resizer.mdiArea.width() - subwindow.width() - x:
-                    x += resizer.mdiArea.width() - self.sizeBefore[0]
-                # closer to the right border of canvas than left one
-                if y > resizer.mdiArea.height() - subwindow.height() - y:
-                    y += resizer.mdiArea.height() - self.sizeBefore[1]
-                subwindow.move(x, y)
-
-                resizer.snap_to_border(subwindow)
-
-    def resizeFloatersOnAreaChange(self):
-        # when krita window gets very small, floaters shouldn't be bigger than it
-        for subwindow in self.resizer.mdiArea.subWindowList():
-            if subwindow != self.resizer.activeSubwin and subwindow != self.resizer.otherSubwin:
-
-                w = min(subwindow.width(), self.resizer.mdiArea.width())
-                h = min(subwindow.height(), self.resizer.mdiArea.height())
-
-                subwindow.resize(w, h)
+            self._handled_views = current_views
+        return False
