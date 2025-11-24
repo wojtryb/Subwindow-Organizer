@@ -23,9 +23,26 @@ class SubwindowOrganizer(Extension):
     def createActions(self, window):
         # TODO: this is probably not in createActions but whatever
 
-        class MyToDo(MdiAreaFilter.ToDo):
+        class SubwindowToDo(SubwindowFilter.ToDo):
+            def on_maximize(self, subwindow: QMdiSubWindow):
+                print("maximize")
+                pass
+
+            def on_demaximize(self, subwindow: QMdiSubWindow):
+                print("demaximize")
+                pass
+
+            def on_resize(self, subwindow: QMdiSubWindow):
+                print("resize")
+                pass
+
+            def on_move(self, subwindow: QMdiSubWindow):
+                print("move")
+                pass
+
+        class AreaToDo(MdiAreaFilter.ToDo):
             def __init__(self) -> None:
-                self._subwindow_filter = SubwindowFilter()
+                self._subwindow_filter = SubwindowFilter(SubwindowToDo())
 
             def on_resize(self):
                 pass
@@ -40,7 +57,7 @@ class SubwindowOrganizer(Extension):
 
         qwin = window.qwindow()
         mdiArea: QMdiArea = qwin.centralWidget().findChild(QMdiArea)
-        self.mdiAreaFilter = MdiAreaFilter(mdiArea, MyToDo())
+        self.mdiAreaFilter = MdiAreaFilter(mdiArea, AreaToDo())
 
 
 Krita.instance().addExtension(SubwindowOrganizer(Krita.instance()))

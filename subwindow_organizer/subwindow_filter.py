@@ -1,4 +1,5 @@
 from threading import Lock
+from typing import Protocol
 
 from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QWindowStateChangeEvent
@@ -7,17 +8,29 @@ from PyQt5.QtWidgets import QMdiSubWindow
 
 class SubwindowFilter(QMdiSubWindow):
 
-    def __init__(self):
+    class ToDo(Protocol):
+        def on_maximize(self, subwindow: QMdiSubWindow): ...
+        def on_demaximize(self, subwindow: QMdiSubWindow): ...
+        def on_resize(self, subwindow: QMdiSubWindow): ...
+        def on_move(self, subwindow: QMdiSubWindow): ...
+
+    class BlankToDo(ToDo):
+        def on_maximize(self, subwindow: QMdiSubWindow): ...
+        def on_demaximize(self, subwindow: QMdiSubWindow): ...
+        def on_resize(self, subwindow: QMdiSubWindow): ...
+        def on_move(self, subwindow: QMdiSubWindow): ...
+
+    def __init__(self, to_do: ToDo = BlankToDo()):
         super().__init__()
         self._lock = Lock()
         self._maximize_states: dict[QMdiSubWindow, bool] = {}
+        self._to_do = to_do
 
     def eventFilter(self, subwindow: QMdiSubWindow, event: QEvent):
         if self._lock.locked():
             return False
 
         with self._lock:
-            # minimize and maximize actions
             if isinstance(event, QWindowStateChangeEvent):
                 if subwindow not in self._maximize_states:
                     self._maximize_states[subwindow] = False
@@ -26,28 +39,22 @@ class SubwindowFilter(QMdiSubWindow):
                 is_maximized = subwindow.isMaximized()
 
                 if is_maximized and not was_maximized:
-                    print("MAXIMIZED")
+                    self._to_do.on_maximize(subwindow)
                 if not is_maximized and was_maximized:
-                    print("MINIMIZED")
+                    self._to_do.on_demaximize(subwindow)
 
                 self._maximize_states[subwindow] = is_maximized
 
             elif event.type() == QEvent.Type.Resize:
-                # print(f"---Window Resize {subwindow}")
-                # subwindow.resize(400, 400)
-                pass
-
-            elif event.type() == QEvent.Type.MouseButtonPress:
-                # print(f"---Window Mouse Button Press {obj}")
-                pass
-
-            elif event.type() == QEvent.Type.MouseButtonRelease:
-                # print(f"---Window Mouse Button Release {obj}")
-                pass
+                self._to_do.on_resize(subwindow)
 
             elif event.type() == QEvent.Type.Move:
-                # print(f"---Window Move {subwindow}")
-                # subwindow.move(200, 200)
-                pass
+                self._to_do.on_move(subwindow)
+
+            # elif event.type() == QEvent.Type.MouseButtonPress:
+            #     pass
+
+            # elif event.type() == QEvent.Type.MouseButtonRelease:
+            #     pass
 
         return False
