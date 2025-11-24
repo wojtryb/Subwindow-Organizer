@@ -13,11 +13,16 @@ class MdiAreaLogic(MdiAreaFilter.Logic):
 
     def on_subwindow_open(self, subwindow: QMdiSubWindow):
         subwindow.installEventFilter(self._subwindow_filter)
-        self._resizer.background_resizer.add(subwindow)
 
-        if len(self._resizer.mdi_area.subWindowList()) >= 3:
+        if len(self._resizer.mdi_area.subWindowList()) <= 2:
+            self._resizer.background_resizer.add(subwindow)
+            self._resizer.background_resizer.resize_background_subwindows()
+        else:
             self._resizer.resize_to_suggested_size(subwindow)
 
     def on_subwindow_close(self, subwindow: QMdiSubWindow):
         subwindow.removeEventFilter(self._subwindow_filter)
-        self._resizer.background_resizer.remove(subwindow)
+
+        if subwindow in self._resizer.background_resizer:
+            self._resizer.background_resizer.remove(subwindow)
+            self._resizer.background_resizer.resize_background_subwindows()
