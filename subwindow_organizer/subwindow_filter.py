@@ -1,6 +1,6 @@
 from threading import Lock
 
-from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QWindowStateChangeEvent
 from PyQt5.QtWidgets import QMdiSubWindow
 
@@ -10,6 +10,7 @@ class SubwindowFilter(QMdiSubWindow):
     def __init__(self):
         super().__init__()
         self._lock = Lock()
+        self._maximize_states: dict[QMdiSubWindow, bool] = {}
 
     def eventFilter(self, subwindow: QMdiSubWindow, event: QEvent):
         if self._lock.locked():
@@ -18,16 +19,18 @@ class SubwindowFilter(QMdiSubWindow):
         with self._lock:
             # minimize and maximize actions
             if isinstance(event, QWindowStateChangeEvent):
-                was_maximized = int(event.oldState()) & int(
-                    Qt.WindowState.WindowMaximized) != 0
+                if subwindow not in self._maximize_states:
+                    self._maximize_states[subwindow] = False
 
-                if subwindow.isMaximized() and not was_maximized:
+                was_maximized = self._maximize_states[subwindow]
+                is_maximized = subwindow.isMaximized()
+
+                if is_maximized and not was_maximized:
                     print("MAXIMIZED")
-
-                if not subwindow.isMaximized() and was_maximized:
+                if not is_maximized and was_maximized:
                     print("MINIMIZED")
 
-                pass
+                self._maximize_states[subwindow] = is_maximized
 
             elif event.type() == QEvent.Type.Resize:
                 # print(f"---Window Resize {subwindow}")
