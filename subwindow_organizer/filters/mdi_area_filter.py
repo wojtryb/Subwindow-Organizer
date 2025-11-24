@@ -11,19 +11,19 @@ from PyQt5.QtWidgets import QMdiArea, QMdiSubWindow
 
 class MdiAreaFilter(QMdiArea):
 
-    class ToDo(Protocol):
+    class Logic(Protocol):
         def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
         def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
 
-    class BlankToDo(ToDo):
+    class BlankLogic(Logic):
         def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
         def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
 
-    def __init__(self, mdiArea: QMdiArea, to_do: ToDo = BlankToDo()):
+    def __init__(self, mdiArea: QMdiArea, logic: Logic = BlankLogic()):
         super().__init__()
         self._mdiArea = mdiArea
         self._handled_views: set[QMdiSubWindow] = set()
-        self._to_do = to_do
+        self._logic = logic
 
     def eventFilter(self, _, e: QEvent):
         if sip.isdeleted(self._mdiArea):
@@ -38,10 +38,10 @@ class MdiAreaFilter(QMdiArea):
             current_views = set(current_views)
 
             if difference := current_views - self._handled_views:
-                self._to_do.on_subwindow_open(difference.pop())
+                self._logic.on_subwindow_open(difference.pop())
             else:
                 difference = self._handled_views - current_views
-                self._to_do.on_subwindow_close(difference.pop())
+                self._logic.on_subwindow_close(difference.pop())
 
             self._handled_views = current_views
         return False

@@ -4,7 +4,7 @@ from filters import SubwindowFilter
 from .resizer import Resizer
 
 
-class SubwindowToDo(SubwindowFilter.ToDo):
+class SubwindowLogic(SubwindowFilter.Logic):
     def __init__(self, resizer: Resizer) -> None:
         self._resizer = resizer
 

@@ -3,8 +3,7 @@ from krita import Extension, Krita
 from PyQt5.QtWidgets import QMdiArea
 
 from filters import MdiAreaFilter
-from .resizer import Resizer
-from .mdi_area_to_do import MdiAreaToDo
+from logic import MdiAreaLogic, Resizer
 
 
 class SubwindowOrganizer(Extension):
@@ -29,4 +28,4 @@ class SubwindowOrganizer(Extension):
 
         self.mdiAreaFilter = MdiAreaFilter(
             mdiArea,
-            MdiAreaToDo(Resizer(mdiArea)))
+            MdiAreaLogic(Resizer(mdiArea)))
