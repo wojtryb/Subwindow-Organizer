@@ -19,30 +19,32 @@ class mdiAreaFilter(QMdiArea):
         self.resizer = resizer
         self.sizeBefore = [resizer.mdiArea.width(), resizer.mdiArea.height()]
 
-    def eventFilter(self, obj, e: QEvent):
-        if not sip.isdeleted(self.resizer.mdiArea):
-            if e.type() == QEvent.Type.Resize:
-                if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
-                    self.resizer.move_subwindows()
-                    self.moveFloatersOnAreaChange(
-                        self.resizer)  # move floaters
-                    self.resizeFloatersOnAreaChange()
-                    # changes done, can actualize width and height of workspace
-                    self.sizeBefore = [
-                        self.resizer.mdiArea.width(), self.resizer.mdiArea.height()]
+    def eventFilter(self, _, e: QEvent):
+        if sip.isdeleted(self.resizer.mdiArea):
+            return False
 
-            # there are many more events, as subwindows aren't the only children, so the change have to be found as change in list size
-            if e.type() == QEvent.Type.ChildAdded:
-                if self.resizer.views < len(self.resizer.mdiArea.subWindowList()):
-                    self.viewOpenedEvent(self.resizer)
-                    self.resizer.views = len(
-                        self.resizer.mdiArea.subWindowList())
+        if e.type() == QEvent.Type.Resize:
+            if Krita.instance().readSetting("", "mdi_viewmode", "1") == "0":
+                self.resizer.move_subwindows()
+                self.moveFloatersOnAreaChange(
+                    self.resizer)  # move floaters
+                self.resizeFloatersOnAreaChange()
+                # changes done, can actualize width and height of workspace
+                self.sizeBefore = [
+                    self.resizer.mdiArea.width(), self.resizer.mdiArea.height()]
 
-            if e.type() == QEvent.Type.ChildRemoved:
-                if self.resizer.views > len(self.resizer.mdiArea.subWindowList()):
-                    self.viewClosedEvent(self.resizer)
-                    self.resizer.views = len(
-                        self.resizer.mdiArea.subWindowList())
+        # there are many more events, as subwindows aren't the only children, so the change have to be found as change in list size
+        if e.type() == QEvent.Type.ChildAdded:
+            if self.resizer.views < len(self.resizer.mdiArea.subWindowList()):
+                self.viewOpenedEvent(self.resizer)
+                self.resizer.views = len(
+                    self.resizer.mdiArea.subWindowList())
+
+        if e.type() == QEvent.Type.ChildRemoved:
+            if self.resizer.views > len(self.resizer.mdiArea.subWindowList()):
+                self.viewClosedEvent(self.resizer)
+                self.resizer.views = len(
+                    self.resizer.mdiArea.subWindowList())
 
         return False
 
@@ -60,18 +62,18 @@ class mdiAreaFilter(QMdiArea):
         resizer.otherSubwin = checkIfDeleted(resizer.otherSubwin)
 
         # active was closed, other is the new active (only in split mode, in one window, there is no other)
-        if resizer.activeSubwin == None:
+        if resizer.activeSubwin is None:
             resizer.activeSubwin = resizer.otherSubwin
             resizer.otherSubwin = None
 
-        if resizer.otherSubwin == None:  # other was closed, or was transformed into active
+        if resizer.otherSubwin is None:  # other was closed, or was transformed into active
             if resizer.refNeeded:  # split mode
                 resizer.user_mode_one_window()
 
-        if resizer.activeSubwin == None:  # at first it was one window mode, active was closed, and nothing took its place
+        if resizer.activeSubwin is None:  # at first it was one window mode, active was closed, and nothing took its place
             resizer.get_active_subwindow()
             # closing everything at once, can cause it
-            if resizer.activeSubwin != None and resizer.activeSubwin.isMinimized():
+            if resizer.activeSubwin is not None and resizer.activeSubwin.isMinimized():
                 # workaround - minimized windows have problems with getting normal, so I maximize them first
                 resizer.activeSubwin.showMaximized()
                 resizer.activeSubwin.showNormal()
@@ -130,9 +132,8 @@ class mdiAreaFilter(QMdiArea):
 
         resizer.move_subwindows()
 
-    # keep snapping to border when screen got bigger
     def moveFloatersOnAreaChange(self, resizer: "Resizer"):
-
+        # keep snapping to border when screen got bigger
         for subwindow in resizer.mdiArea.subWindowList():
             if subwindow != resizer.activeSubwin and subwindow != resizer.otherSubwin:
                 x = subwindow.pos().x()
@@ -148,8 +149,8 @@ class mdiAreaFilter(QMdiArea):
 
                 resizer.snap_to_border(subwindow)
 
-    # when krita window gets very small, floaters shouldn't be bigger than it
     def resizeFloatersOnAreaChange(self):
+        # when krita window gets very small, floaters shouldn't be bigger than it
         for subwindow in self.resizer.mdiArea.subWindowList():
             if subwindow != self.resizer.activeSubwin and subwindow != self.resizer.otherSubwin:
 

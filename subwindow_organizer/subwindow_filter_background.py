@@ -52,7 +52,7 @@ class SubwindowFilterBackground(QMdiSubWindow):
             self.lastCursorReleased = copy(self.cursor)
 
         elif e.type() == QEvent.Type.Move:
-            if (not self.resizeBool) and not self.switchingInProgress and self.cursor != None:
+            if (not self.resizeBool) and not self.switchingInProgress and self.cursor is not None:
                 self.switchingInProgress = True
 
                 done = self._swap_floaters(obj)

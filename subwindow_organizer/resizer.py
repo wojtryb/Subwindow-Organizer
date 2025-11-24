@@ -72,7 +72,7 @@ class Resizer:
             self.activeSubwin = self.mdiArea.subWindowList()[0]
         else:
             self.activeSubwin = self.mdiArea.activeSubWindow()
-        if self.activeSubwin != None:  # bugfix - when multiple windows are closed at once, it can get here with both views deleted
+        if self.activeSubwin is not None:  # bugfix - when multiple windows are closed at once, it can get here with both views deleted
             self.activeSubwin.setMinimumWidth(MINIMALCOLUMNWIDTH)
             self.activeSubwin.installEventFilter(
                 self.subWindowFilterBackground)
