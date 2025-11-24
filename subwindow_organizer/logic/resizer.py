@@ -1,13 +1,14 @@
 from PyQt5.QtWidgets import QMdiArea, QMdiSubWindow
 from PyQt5.QtCore import QSize
 
+from .background_resizer import BackgroundResizer
+
 
 class Resizer:
 
     def __init__(self, mdi_area: QMdiArea):
         self.mdi_area = mdi_area
-        self.left: QMdiSubWindow | None = None
-        self.right: QMdiSubWindow | None = None
+        self.background_resizer = BackgroundResizer(self.mdi_area)
 
     # snapping floaters to border of the canvas
     def snap_to_border(self, subwindow: QMdiSubWindow):
@@ -41,15 +42,3 @@ class Resizer:
     #     a.move(b_pos)
     #     b.resize(a_size)
     #     b.move(a_pos)
-
-    def resize_background_subwindows(self):
-        if self.left is not None and self.right is None:
-            self.left.resize(self.mdi_area.size())
-            self.left.move(0, 0)
-        if self.left is not None and self.right is not None:
-            width, height = self.mdi_area.width(), self.mdi_area.height()
-
-            self.left.resize(round(width * 0.5), height)
-            self.left.move(0, 0)
-            self.right.resize(round(width * 0.5), height)
-            self.right.move(width, 0)
