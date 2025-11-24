@@ -5,18 +5,17 @@ from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QMdiArea, QMdiSubWindow
 
 # NOTE: QMdiArea has Tabbed/Subwindow mode enums in it
-# TODO: resize event should be handled with similar but separate class?
+
+# TODO: write similar class for handling krita main window resize
 
 
 class MdiAreaFilter(QMdiArea):
 
     class ToDo(Protocol):
-        def on_resize(self): ...
         def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
         def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
 
     class BlankToDo(ToDo):
-        def on_resize(self): ...
         def on_subwindow_open(self, subwindow: QMdiSubWindow): ...
         def on_subwindow_close(self, subwindow: QMdiSubWindow): ...
 
@@ -29,10 +28,6 @@ class MdiAreaFilter(QMdiArea):
     def eventFilter(self, _, e: QEvent):
         if sip.isdeleted(self._mdiArea):
             return False
-
-        # Krita window is resized
-        if e.type() == QEvent.Type.Resize:
-            self._to_do.on_resize()
 
         # Event that can be (among many other) change in subwindows amount
         if e.type() in (QEvent.Type.ChildAdded, QEvent.Type.ChildRemoved):

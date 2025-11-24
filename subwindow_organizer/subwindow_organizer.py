@@ -44,9 +44,6 @@ class SubwindowOrganizer(Extension):
             def __init__(self) -> None:
                 self._subwindow_filter = SubwindowFilter(SubwindowToDo())
 
-            def on_resize(self):
-                pass
-
             def on_subwindow_open(self, subwindow: QMdiSubWindow):
                 print(f"View Opened: {subwindow}")
                 subwindow.installEventFilter(self._subwindow_filter)
