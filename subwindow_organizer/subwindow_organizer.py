@@ -3,6 +3,7 @@ from krita import Extension, Krita
 from PyQt5.QtWidgets import QMdiArea, QMdiSubWindow
 
 from .mdi_area_filter import MdiAreaFilter
+from .subwindow_filter import SubwindowFilter
 
 
 class SubwindowOrganizer(Extension):
@@ -21,15 +22,21 @@ class SubwindowOrganizer(Extension):
 
     def createActions(self, window):
         # TODO: this is probably not in createActions but whatever
+
         class MyToDo(MdiAreaFilter.ToDo):
+            def __init__(self) -> None:
+                self._subwindow_filter = SubwindowFilter()
+
             def on_resize(self):
-                print("resize")
+                pass
 
             def on_subwindow_open(self, subwindow: QMdiSubWindow):
                 print(f"View Opened: {subwindow}")
+                subwindow.installEventFilter(self._subwindow_filter)
 
             def on_subwindow_close(self, subwindow: QMdiSubWindow):
                 print(f"View Closed: {subwindow}")
+                subwindow.removeEventFilter(self._subwindow_filter)
 
         qwin = window.qwindow()
         mdiArea: QMdiArea = qwin.centralWidget().findChild(QMdiArea)
