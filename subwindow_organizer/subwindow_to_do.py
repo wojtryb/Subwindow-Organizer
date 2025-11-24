@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMdiSubWindow
 
-from .subwindow_filter import SubwindowFilter
+from filters import SubwindowFilter
 from .resizer import Resizer
 
 

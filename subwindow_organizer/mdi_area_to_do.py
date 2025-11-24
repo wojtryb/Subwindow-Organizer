@@ -1,8 +1,7 @@
 from PyQt5.QtWidgets import QMdiSubWindow
 
-from .subwindow_filter import SubwindowFilter
+from filters import MdiAreaFilter, SubwindowFilter
 from .subwindow_to_do import SubwindowToDo
-from .mdi_area_filter import MdiAreaFilter
 from .resizer import Resizer
 
 
